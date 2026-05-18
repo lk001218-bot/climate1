@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>기후 데이터 탐구 활동</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --primary: #1a6b4a;
+    --primary-light: #e6f5ee;
+    --primary-mid: #3d9970;
+    --accent: #e8a020;
+    --accent-light: #fef3dc;
+    --danger: #c0392b;
+    --danger-light: #fdecea;
+    --info: #2980b9;
+    --info-light: #eaf4fb;
+    --bg: #f7f9f7;
+    --surface: #ffffff;
+    --border: #d8e8dd;
+    --text: #1a2e24;
+    --text-sub: #5a7a65;
+    --text-hint: #8aa898;
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--primary);
+    color: white;
+    padding: 18px 20px 14px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(26,107,74,0.25);
+  }
+  .header h1 {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+  .header p {
+    font-size: 12px;
+    opacity: 0.8;
+    margin-top: 2px;
+  }
+
+  /* TAB NAV */
+  .tab-nav {
+    display: flex;
+    background: var(--surface);
+    border-bottom: 1.5px solid var(--border);
+    position: sticky;
+    top: 68px;
+    z-index: 99;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 12px 6px;
+    border: none;
+    background: none;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-sub);
+    cursor: pointer;
+    border-bottom: 2.5px solid transparent;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    font-family: inherit;
+  }
+  .tab-btn .tab-icon { font-size: 18px; }
+  .tab-btn.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    background: var(--primary-light);
+  }
+
+  /* PAGES */
+  .page { display: none; padding: 16px; }
+  .page.active { display: block; }
+
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .card-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .card-title .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--primary-mid);
+    flex-shrink: 0;
+  }
+
+  /* TEAM / TOPIC SETUP */
+  .setup-row {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .form-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-sub);
+    margin-bottom: 4px;
+    display: block;
+    letter-spacing: 0.3px;
+  }
+  input[type="text"], select, textarea {
+    width: 100%;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input[type="text"]:focus, select:focus, textarea:focus {
+    border-color: var(--primary-mid);
+    background: var(--surface);
+  }
+  textarea { min-height: 80px; resize: vertical; }
+
+  /* MONTH SELECTOR */
+  .month-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .month-btn {
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    padding: 8px 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-sub);
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+  .month-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+  }
+
+  /* DATA INPUT TABLE */
+  .data-table-wrap {
+    overflow-x: auto;
+    margin: 0 -4px;
+  }
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 300px;
+  }
+  .data-table th {
+    background: var(--primary-light);
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 8px 6px;
+    text-align: center;
+    border-bottom: 1.5px solid var(--border);
+  }
+  .data-table td {
+    padding: 4px 4px;
+    border-bottom: 1px solid var(--bg);
+    text-align: center;
+    font-size: 13px;
+  }
+  .data-table tr:nth-child(even) td { background: #f9fdf9; }
+  .data-table input {
+    width: 70px;
+    padding: 7px 6px;
+    font-size: 13px;
+    border-radius: 6px;
+    text-align: right;
+    background: var(--surface);
+  }
+  .month-label {
+    font-weight: 600;
+    color: var(--text-sub);
+    font-size: 12px;
+  }
+
+  /* BUTTONS */
+  .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    padding: 13px;
+    border-radius: var(--radius-sm);
+    border: none;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 3px 10px rgba(26,107,74,0.3);
+  }
+  .btn-primary:hover { background: #145c3c; }
+  .btn-accent {
+    background: var(--accent);
+    color: white;
+    box-shadow: 0 3px 10px rgba(232,160,32,0.3);
+  }
+  .btn-secondary {
+    background: var(--surface);
+    color: var(--primary);
+    border: 1.5px solid var(--primary);
+  }
+  .btn-danger {
+    background: var(--danger-light);
+    color: var(--danger);
+    border: 1.5px solid #f5a8a2;
+  }
+  .btn-sm {
+    width: auto;
+    padding: 8px 14px;
+    font-size: 13px;
+    border-radius: 6px;
+  }
+  .btn-row { display: flex; gap: 8px; }
+
+  /* CHART AREA */
+  .chart-type-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .chart-type-btn {
+    flex: 1;
+    min-width: 70px;
+    padding: 9px 8px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border);
+    background: var(--bg);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-sub);
+    cursor: pointer;
+    text-align: center;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .chart-type-btn.active {
+    background: var(--accent-light);
+    border-color: var(--accent);
+    color: #7a4d00;
+  }
+  .chart-wrap {
+    position: relative;
+    width: 100%;
+    height: 280px;
+    margin: 12px 0;
+  }
+
+  /* ANALYSIS */
+  .analysis-section { margin-top: 16px; }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .stat-card {
+    background: var(--primary-light);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    text-align: center;
+  }
+  .stat-card .label { font-size: 11px; color: var(--text-sub); font-weight: 600; }
+  .stat-card .value { font-size: 20px; font-weight: 800; color: var(--primary); margin-top: 3px; }
+  .stat-card .unit { font-size: 11px; color: var(--text-hint); }
+
+  .question-block {
+    background: var(--info-light);
+    border-left: 3px solid var(--info);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+  .question-block .q-num {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--info);
+    margin-bottom: 4px;
+    letter-spacing: 0.5px;
+  }
+  .question-block .q-text {
+    font-size: 14px;
+    color: var(--text);
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+  .answer-box {
+    width: 100%;
+    border: 1.5px solid #b8d8ef;
+    border-radius: 6px;
+    background: white;
+    padding: 8px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text);
+    resize: vertical;
+    min-height: 64px;
+    outline: none;
+  }
+  .answer-box:focus { border-color: var(--info); }
+
+  /* SUMMARY / SHARE */
+  .summary-card {
+    background: linear-gradient(135deg, var(--primary-light) 0%, #e8f8f0 100%);
+    border: 1.5px solid #b0dfc5;
+    border-radius: var(--radius);
+    padding: 18px;
+    margin-bottom: 14px;
+  }
+  .summary-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--primary);
+    margin-bottom: 4px;
+  }
+  .summary-meta {
+    font-size: 12px;
+    color: var(--text-sub);
+    margin-bottom: 14px;
+  }
+  .summary-findings {
+    background: white;
+    border-radius: 10px;
+    padding: 12px;
+  }
+  .finding-item {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+  .finding-icon { flex-shrink: 0; }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #1a2e24;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 999;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* EMPTY STATE */
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-hint);
+  }
+  .empty-state .emoji { font-size: 40px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; }
+
+  /* TIPS */
+  .tip-box {
+    background: var(--accent-light);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 10px 12px;
+    font-size: 13px;
+    color: #5a3d00;
+    margin-bottom: 12px;
+  }
+  .tip-box strong { color: #7a4d00; }
+
+  /* SEPARATOR */
+  .sep { height: 1px; background: var(--border); margin: 14px 0; }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    background: var(--primary);
+    color: white;
+    margin-left: 4px;
+  }
+  .badge.orange { background: var(--accent); }
+
+  .progress-bar-wrap {
+    background: var(--border);
+    border-radius: 4px;
+    height: 6px;
+    margin-top: 6px;
+    overflow: hidden;
+  }
+  .progress-bar {
+    height: 100%;
+    background: var(--primary-mid);
+    border-radius: 4px;
+    transition: width 0.5s ease;
+  }
+
+  /* hidden utility */
+  .sr-only {
+    position: absolute; width: 1px; height: 1px;
+    padding: 0; margin: -1px; overflow: hidden;
+    clip: rect(0,0,0,0); border: 0;
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <h1>🌍 기후 데이터 탐구 활동</h1>
+  <p>데이터 수집 → 표 작성 → 그래프 → 분석</p>
+</header>
+
+<nav class="tab-nav" role="tablist">
+  <button class="tab-btn active" onclick="showPage('setup')" role="tab" aria-selected="true">
+    <span class="tab-icon">📋</span>준비
+  </button>
+  <button class="tab-btn" onclick="showPage('data')" role="tab">
+    <span class="tab-icon">📊</span>데이터
+  </button>
+  <button class="tab-btn" onclick="showPage('graph')" role="tab">
+    <span class="tab-icon">📈</span>그래프
+  </button>
+  <button class="tab-btn" onclick="showPage('analysis')" role="tab">
+    <span class="tab-icon">🔍</span>분석
+  </button>
+</nav>
+
+<h2 class="sr-only">기후 데이터 탐구 활동 도구</h2>
+
+<!-- PAGE 1: SETUP -->
+<div class="page active" id="page-setup">
+
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>모둠 정보 입력</div>
+    <div class="setup-row">
+      <div>
+        <label class="form-label">모둠 이름</label>
+        <input type="text" id="group-name" placeholder="예: 1모둠" maxlength="20">
+      </div>
+      <div>
+        <label class="form-label">모둠원 이름 (쉼표로 구분)</label>
+        <input type="text" id="members" placeholder="예: 김지수, 박민준, 이서연">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>탐구 주제 설정</div>
+
+    <label class="form-label">조사 지역</label>
+    <select id="region" style="margin-bottom: 12px;">
+      <option value="">-- 지역 선택 --</option>
+      <optgroup label="🇰🇷 국내">
+        <option>서울</option>
+        <option>부산</option>
+        <option>인천</option>
+        <option>대구</option>
+        <option>광주</option>
+        <option>대전</option>
+        <option>제주</option>
+        <option>강릉</option>
+        <option>청주</option>
+        <option>전주</option>
+      </optgroup>
+      <optgroup label="🌏 해외 비교">
+        <option>도쿄 (일본)</option>
+        <option>베이징 (중국)</option>
+        <option>싱가포르</option>
+        <option>런던 (영국)</option>
+        <option>뉴욕 (미국)</option>
+      </optgroup>
+    </select>
+
+    <label class="form-label">데이터 종류 (복수 선택 가능)</label>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+      <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; background: var(--bg); padding: 10px; border-radius: 8px; cursor: pointer;">
+        <input type="checkbox" id="cb-temp" checked style="width: auto; accent-color: var(--primary);">
+        🌡️ 월평균 기온 (°C)
+      </label>
+      <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; background: var(--bg); padding: 10px; border-radius: 8px; cursor: pointer;">
+        <input type="checkbox" id="cb-rain" checked style="width: auto; accent-color: var(--primary);">
+        🌧️ 월강수량 (mm)
+      </label>
+      <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; background: var(--bg); padding: 10px; border-radius: 8px; cursor: pointer;">
+        <input type="checkbox" id="cb-humid" style="width: auto; accent-color: var(--primary);">
+        💧 평균 습도 (%)
+      </label>
+      <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; background: var(--bg); padding: 10px; border-radius: 8px; cursor: pointer;">
+        <input type="checkbox" id="cb-wind" style="width: auto; accent-color: var(--primary);">
+        💨 평균 풍속 (m/s)
+      </label>
+    </div>
+
+    <label class="form-label">조사 연도</label>
+    <select id="year" style="margin-bottom: 12px;">
+      <option>2023년</option>
+      <option>2022년</option>
+      <option>2021년</option>
+      <option>2020년</option>
+      <option>2019년</option>
+      <option>최근 10년 평균</option>
+    </select>
+
+    <label class="form-label">조사 탐구 질문 (직접 작성)</label>
+    <textarea id="research-q" placeholder="예: 서울의 계절별 기온 변화는 어떤 패턴을 보이는가?"></textarea>
+  </div>
+
+  <div class="tip-box">
+    <strong>📌 데이터 출처:</strong> 기상청 기상자료개방포털(data.kma.go.kr)에서 지역별 월평균 기후 데이터를 검색하세요.
+  </div>
+
+  <button class="btn btn-primary" onclick="goToData()">
+    ✅ 설정 완료 → 데이터 입력하기
+  </button>
+</div>
+
+<!-- PAGE 2: DATA INPUT -->
+<div class="page" id="page-data">
+
+  <div class="card" id="group-info-bar" style="background: var(--primary); color: white; padding: 12px 16px;">
+    <div style="font-size: 13px; opacity: 0.85;" id="info-region">지역: -</div>
+    <div style="font-size: 15px; font-weight: 700; margin-top: 2px;" id="info-group">모둠: -</div>
+  </div>
+
+  <div class="tip-box">
+    <strong>💡 입력 방법:</strong> 기상청에서 조사한 값을 각 월에 입력하세요. 숫자만 입력합니다. 소수점 첫째 자리까지 가능합니다.
+  </div>
+
+  <div class="card" id="temp-card">
+    <div class="card-title"><span class="dot"></span>🌡️ 월평균 기온 (°C)</div>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>월</th>
+            <th>기온 (°C)</th>
+          </tr>
+        </thead>
+        <tbody id="temp-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card" id="rain-card">
+    <div class="card-title"><span class="dot"></span>🌧️ 월강수량 (mm)</div>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>월</th>
+            <th>강수량 (mm)</th>
+          </tr>
+        </thead>
+        <tbody id="rain-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card" id="humid-card" style="display:none">
+    <div class="card-title"><span class="dot"></span>💧 평균 습도 (%)</div>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>월</th>
+            <th>습도 (%)</th>
+          </tr>
+        </thead>
+        <tbody id="humid-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card" id="wind-card" style="display:none">
+    <div class="card-title"><span class="dot"></span>💨 평균 풍속 (m/s)</div>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>월</th>
+            <th>풍속 (m/s)</th>
+          </tr>
+        </thead>
+        <tbody id="wind-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 8px;">
+    <button class="btn btn-secondary" onclick="clearData()" style="flex: 1;">🗑️ 초기화</button>
+    <button class="btn btn-primary" onclick="goToGraph()" style="flex: 2;">📈 그래프 보기 →</button>
+  </div>
+
+</div>
+
+<!-- PAGE 3: GRAPH -->
+<div class="page" id="page-graph">
+
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>그래프 종류 선택</div>
+    <div class="chart-type-row">
+      <button class="chart-type-btn active" onclick="setChartType('line', this)">📈 꺾은선<br><span style="font-size: 10px; font-weight: 400;">추세 파악</span></button>
+      <button class="chart-type-btn" onclick="setChartType('bar', this)">📊 막대<br><span style="font-size: 10px; font-weight: 400;">비교</span></button>
+      <button class="chart-type-btn" onclick="setChartType('mixed', this)">📉 혼합<br><span style="font-size: 10px; font-weight: 400;">기온+강수량</span></button>
+    </div>
+
+    <label class="form-label">표시할 데이터</label>
+    <select id="data-select" onchange="drawChart()" style="margin-bottom: 14px;">
+      <option value="temp">🌡️ 월평균 기온</option>
+      <option value="rain">🌧️ 월강수량</option>
+      <option value="humid">💧 평균 습도</option>
+      <option value="wind">💨 평균 풍속</option>
+      <option value="all">전체 (혼합)</option>
+    </select>
+  </div>
+
+  <div class="card" style="padding-bottom: 20px;">
+    <div class="chart-wrap">
+      <canvas id="mainChart" role="img" aria-label="기후 데이터 그래프">기후 데이터 시각화 그래프</canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>그래프 읽기 체크리스트</div>
+    <div id="checklist">
+      <label style="display: flex; align-items: flex-start; gap: 10px; font-size: 14px; margin-bottom: 10px; cursor: pointer;">
+        <input type="checkbox" style="width: auto; margin-top: 2px; accent-color: var(--primary);"> 가장 높은 값(최댓값)이 나타나는 월을 확인했다.
+      </label>
+      <label style="display: flex; align-items: flex-start; gap: 10px; font-size: 14px; margin-bottom: 10px; cursor: pointer;">
+        <input type="checkbox" style="width: auto; margin-top: 2px; accent-color: var(--primary);"> 가장 낮은 값(최솟값)이 나타나는 월을 확인했다.
+      </label>
+      <label style="display: flex; align-items: flex-start; gap: 10px; font-size: 14px; margin-bottom: 10px; cursor: pointer;">
+        <input type="checkbox" style="width: auto; margin-top: 2px; accent-color: var(--primary);"> 계절별(봄·여름·가을·겨울) 변화 패턴을 파악했다.
+      </label>
+      <label style="display: flex; align-items: flex-start; gap: 10px; font-size: 14px; margin-bottom: 10px; cursor: pointer;">
+        <input type="checkbox" style="width: auto; margin-top: 2px; accent-color: var(--primary);"> 두 변수(기온과 강수량 등) 사이의 관계를 살펴봤다.
+      </label>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" onclick="showPage('analysis'); setActiveTab(3);">🔍 분석 작성하러 가기 →</button>
+</div>
+
+<!-- PAGE 4: ANALYSIS -->
+<div class="page" id="page-analysis">
+
+  <div id="stat-section" class="card">
+    <div class="card-title"><span class="dot"></span>📐 자동 통계 요약</div>
+    <div class="stat-grid" id="stat-grid">
+      <div class="stat-card">
+        <div class="label">기온 최고</div>
+        <div class="value" id="stat-tmax">-</div>
+        <div class="unit">°C</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">기온 최저</div>
+        <div class="value" id="stat-tmin">-</div>
+        <div class="unit">°C</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">연간 강수량</div>
+        <div class="value" id="stat-rtotal">-</div>
+        <div class="unit">mm</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">기온 연교차</div>
+        <div class="value" id="stat-trange">-</div>
+        <div class="unit">°C</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>✍️ 탐구 결과 서술</div>
+
+    <div class="question-block">
+      <div class="q-num">질문 1</div>
+      <div class="q-text">그래프에서 발견한 가장 중요한 특징을 한 문장으로 쓰세요.</div>
+      <textarea class="answer-box" id="ans1" placeholder="예: 서울의 기온은 8월에 최고(약 25°C)이고 1월에 최저(약 -3°C)이다."></textarea>
+    </div>
+
+    <div class="question-block">
+      <div class="q-num">질문 2</div>
+      <div class="q-text">기온과 강수량 사이에 어떤 관계가 있나요? 근거와 함께 쓰세요.</div>
+      <textarea class="answer-box" id="ans2" placeholder="예: 기온이 높은 여름철(6~8월)에 강수량도 많다. 이는 고온다습한 북태평양 고기압의 영향 때문이다."></textarea>
+    </div>
+
+    <div class="question-block">
+      <div class="q-num">질문 3</div>
+      <div class="q-text">이 기후 특성이 우리 생활(농업, 의복, 건축 등)에 미치는 영향을 쓰세요.</div>
+      <textarea class="answer-box" id="ans3" placeholder="예: 여름 강수 집중으로 논농사에 유리하고, 여름에 얇고 가벼운 옷이 필요하다."></textarea>
+    </div>
+
+    <div class="question-block" style="border-left-color: var(--primary-mid); background: var(--primary-light);">
+      <div class="q-num" style="color: var(--primary);">심화 질문</div>
+      <div class="q-text">최초 탐구 질문에 대한 답을 과학적으로 서술하세요.</div>
+      <textarea class="answer-box" id="ans-final" placeholder="탐구 질문에 대한 최종 답변을 데이터 근거와 함께 작성하세요."></textarea>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>📱 결과 공유</div>
+    <p style="font-size: 13px; color: var(--text-sub); margin-bottom: 12px;">작성한 내용을 복사하여 패들릿, 구글 클래스룸 등에 붙여넣을 수 있습니다.</p>
+    <div style="display: flex; gap: 8px;">
+      <button class="btn btn-accent btn-sm" onclick="copyResult()">📋 결과 복사</button>
+      <button class="btn btn-secondary btn-sm" onclick="saveLocal()">💾 임시 저장</button>
+      <button class="btn btn-secondary btn-sm" onclick="loadLocal()">📂 불러오기</button>
+    </div>
+  </div>
+
+  <div id="summary-preview" style="display:none;" class="summary-card">
+    <div class="summary-title" id="sp-title"></div>
+    <div class="summary-meta" id="sp-meta"></div>
+    <div class="summary-findings" id="sp-findings"></div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const MONTHS = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+let chartInstance = null;
+let currentChartType = 'line';
+
+const data = {
+  temp: Array(12).fill(''),
+  rain: Array(12).fill(''),
+  humid: Array(12).fill(''),
+  wind: Array(12).fill('')
+};
+
+function buildTable(tbodyId, key, placeholder, step) {
+  const tbody = document.getElementById(tbodyId);
+  tbody.innerHTML = '';
+  MONTHS.forEach((m, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="month-label">${m}</td>
+      <td><input type="number" inputmode="decimal" step="${step}" placeholder="${placeholder}"
+        value="${data[key][i]}"
+        oninput="data['${key}'][${i}] = this.value"
+        aria-label="${m} ${key}"></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function goToData() {
+  const region = document.getElementById('region').value;
+  if (!region) { showToast('지역을 선택해주세요!'); return; }
+  const gname = document.getElementById('group-name').value || '우리 모둠';
+  document.getElementById('info-region').textContent = `지역: ${region} | ${document.getElementById('year').value}`;
+  document.getElementById('info-group').textContent = `${gname} (${document.getElementById('members').value || '모둠원 미입력'})`;
+
+  const showHumid = document.getElementById('cb-humid').checked;
+  const showWind = document.getElementById('cb-wind').checked;
+  document.getElementById('humid-card').style.display = showHumid ? '' : 'none';
+  document.getElementById('wind-card').style.display = showWind ? '' : 'none';
+
+  buildTable('temp-tbody', 'temp', '0.0', '0.1');
+  buildTable('rain-tbody', 'rain', '0', '1');
+  buildTable('humid-tbody', 'humid', '0', '1');
+  buildTable('wind-tbody', 'wind', '0.0', '0.1');
+
+  showPage('data'); setActiveTab(1);
+}
+
+function clearData() {
+  if (!confirm('입력한 데이터를 모두 지울까요?')) return;
+  ['temp','rain','humid','wind'].forEach(k => { data[k] = Array(12).fill(''); });
+  buildTable('temp-tbody', 'temp', '0.0', '0.1');
+  buildTable('rain-tbody', 'rain', '0', '1');
+  buildTable('humid-tbody', 'humid', '0', '1');
+  buildTable('wind-tbody', 'wind', '0.0', '0.1');
+  showToast('데이터를 초기화했습니다.');
+}
+
+function goToGraph() {
+  const tempVals = data.temp.filter(v => v !== '');
+  if (tempVals.length < 3) { showToast('최소 3개 이상의 데이터를 입력하세요!'); return; }
+  updateStats();
+  showPage('graph'); setActiveTab(2);
+  setTimeout(drawChart, 100);
+}
+
+function setChartType(type, btn) {
+  currentChartType = type;
+  document.querySelectorAll('.chart-type-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (type === 'mixed') {
+    document.getElementById('data-select').value = 'all';
+  }
+  drawChart();
+}
+
+function drawChart() {
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+  const sel = document.getElementById('data-select').value;
+  const ctx = document.getElementById('mainChart').getContext('2d');
+  const region = document.getElementById('region').value || '선택 지역';
+  const labels = MONTHS;
+
+  const getVals = key => data[key].map(v => v === '' ? null : parseFloat(v));
+
+  let config;
+
+  if (currentChartType === 'mixed' || sel === 'all') {
+    config = {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          {
+            type: 'line',
+            label: '기온 (°C)',
+            data: getVals('temp'),
+            borderColor: '#e04040',
+            backgroundColor: 'rgba(224,64,64,0.12)',
+            borderWidth: 2.5,
+            pointRadius: 4,
+            tension: 0.35,
+            yAxisID: 'yTemp',
+            fill: true,
+            spanGaps: true
+          },
+          {
+            type: 'bar',
+            label: '강수량 (mm)',
+            data: getVals('rain'),
+            backgroundColor: 'rgba(41,128,185,0.65)',
+            borderColor: 'rgba(41,128,185,0.9)',
+            borderWidth: 1,
+            yAxisID: 'yRain',
+            borderRadius: 4
+          }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          yTemp: { type: 'linear', position: 'left', title: { display: true, text: '기온 (°C)', color: '#c0392b', font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.06)' } },
+          yRain: { type: 'linear', position: 'right', title: { display: true, text: '강수량 (mm)', color: '#2980b9', font: { size: 11 } }, grid: { drawOnChartArea: false } }
+        }
+      }
+    };
+  } else {
+    const colorMap = { temp: '#e04040', rain: '#2980b9', humid: '#27ae60', wind: '#8e44ad' };
+    const unitMap = { temp: '°C', rain: 'mm', humid: '%', wind: 'm/s' };
+    const nameMap = { temp: '기온', rain: '강수량', humid: '습도', wind: '풍속' };
+    const type = currentChartType === 'mixed' ? 'bar' : currentChartType;
+    config = {
+      type,
+      data: {
+        labels,
+        datasets: [{
+          label: `${nameMap[sel]} (${unitMap[sel]})`,
+          data: getVals(sel),
+          borderColor: colorMap[sel],
+          backgroundColor: type === 'bar' ? colorMap[sel] + 'aa' : colorMap[sel] + '22',
+          borderWidth: type === 'bar' ? 1 : 2.5,
+          pointRadius: 4,
+          tension: 0.35,
+          fill: type === 'line',
+          spanGaps: true,
+          borderRadius: type === 'bar' ? 4 : 0
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { title: { display: true, text: `${nameMap[sel]} (${unitMap[sel]})`, font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.06)' } },
+          x: { grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { font: { size: 11 }, autoSkip: false } }
+        }
+      }
+    };
+  }
+
+  chartInstance = new Chart(ctx, config);
+
+  // Custom legend
+  const legendHtml = chartInstance.data.datasets.map(ds => {
+    const color = ds.borderColor || ds.backgroundColor;
+    return `<span style="display:flex;align-items:center;gap:5px;font-size:12px;color:#555;">
+      <span style="width:12px;height:12px;border-radius:2px;background:${color};flex-shrink:0;"></span>
+      ${ds.label}</span>`;
+  }).join('');
+}
+
+function updateStats() {
+  const temps = data.temp.map(Number).filter((v, i) => data.temp[i] !== '');
+  const rains = data.rain.map(Number).filter((v, i) => data.rain[i] !== '');
+  if (temps.length) {
+    const tmax = Math.max(...temps);
+    const tmin = Math.min(...temps);
+    document.getElementById('stat-tmax').textContent = tmax.toFixed(1);
+    document.getElementById('stat-tmin').textContent = tmin.toFixed(1);
+    document.getElementById('stat-trange').textContent = (tmax - tmin).toFixed(1);
+  }
+  if (rains.length) {
+    document.getElementById('stat-rtotal').textContent = Math.round(rains.reduce((a,b) => a+b, 0));
+  }
+}
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  const tabMap = { setup: 0, data: 1, graph: 2, analysis: 3 };
+  setActiveTab(tabMap[name]);
+  if (name === 'analysis') updateStats();
+  if (name === 'graph') setTimeout(drawChart, 120);
+  window.scrollTo(0, 0);
+}
+
+function setActiveTab(idx) {
+  document.querySelectorAll('.tab-btn').forEach((b, i) => {
+    b.classList.toggle('active', i === idx);
+    b.setAttribute('aria-selected', i === idx ? 'true' : 'false');
+  });
+}
+
+function copyResult() {
+  const gname = document.getElementById('group-name').value || '모둠';
+  const region = document.getElementById('region').value || '지역 미선택';
+  const year = document.getElementById('year').value;
+  const members = document.getElementById('members').value;
+  const rq = document.getElementById('research-q').value;
+  const a1 = document.getElementById('ans1').value;
+  const a2 = document.getElementById('ans2').value;
+  const a3 = document.getElementById('ans3').value;
+  const afinal = document.getElementById('ans-final').value;
+
+  const tmax = document.getElementById('stat-tmax').textContent;
+  const tmin = document.getElementById('stat-tmin').textContent;
+  const rtotal = document.getElementById('stat-rtotal').textContent;
+  const trange = document.getElementById('stat-trange').textContent;
+
+  const text = `[기후 데이터 탐구 결과]
+━━━━━━━━━━━━━━━━━━━━
+모둠: ${gname}
+모둠원: ${members}
+지역: ${region} | ${year}
+탐구 질문: ${rq}
+
+[통계 요약]
+기온 최고: ${tmax}°C | 기온 최저: ${tmin}°C
+연교차: ${trange}°C | 연간 강수량: ${rtotal}mm
+
+[탐구 결과]
+Q1. 주요 특징: ${a1}
+Q2. 기온-강수량 관계: ${a2}
+Q3. 생활과의 연결: ${a3}
+★ 최종 탐구 답변: ${afinal}
+━━━━━━━━━━━━━━━━━━━━`;
+
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('📋 클립보드에 복사되었습니다!');
+    document.getElementById('summary-preview').style.display = 'block';
+    document.getElementById('sp-title').textContent = `${region} 기후 탐구 결과 — ${gname}`;
+    document.getElementById('sp-meta').textContent = `${members} | ${year}`;
+    document.getElementById('sp-findings').innerHTML = `<div class="finding-item"><span class="finding-icon">🌡️</span><span>기온 최고 <b>${tmax}°C</b>, 최저 <b>${tmin}°C</b>, 연교차 <b>${trange}°C</b></span></div>
+<div class="finding-item"><span class="finding-icon">🌧️</span><span>연간 강수량 <b>${rtotal}mm</b></span></div>
+<div class="finding-item"><span class="finding-icon">✍️</span><span>${afinal || a1 || '답변 미작성'}</span></div>`;
+  }).catch(() => {
+    showToast('복사 실패: 내용을 직접 선택하세요.');
+  });
+}
+
+function saveLocal() {
+  const saveData = {
+    group: document.getElementById('group-name').value,
+    members: document.getElementById('members').value,
+    region: document.getElementById('region').value,
+    year: document.getElementById('year').value,
+    rq: document.getElementById('research-q').value,
+    data,
+    ans1: document.getElementById('ans1').value,
+    ans2: document.getElementById('ans2').value,
+    ans3: document.getElementById('ans3').value,
+    ansFinal: document.getElementById('ans-final').value,
+  };
+  try {
+    sessionStorage.setItem('climateData', JSON.stringify(saveData));
+    showToast('💾 임시 저장되었습니다!');
+  } catch(e) {
+    showToast('저장 실패: 브라우저 설정을 확인하세요.');
+  }
+}
+
+function loadLocal() {
+  try {
+    const saved = sessionStorage.getItem('climateData');
+    if (!saved) { showToast('저장된 데이터가 없습니다.'); return; }
+    const d = JSON.parse(saved);
+    document.getElementById('group-name').value = d.group || '';
+    document.getElementById('members').value = d.members || '';
+    if (d.region) document.getElementById('region').value = d.region;
+    if (d.year) document.getElementById('year').value = d.year;
+    document.getElementById('research-q').value = d.rq || '';
+    ['temp','rain','humid','wind'].forEach(k => { if (d.data && d.data[k]) data[k] = d.data[k]; });
+    document.getElementById('ans1').value = d.ans1 || '';
+    document.getElementById('ans2').value = d.ans2 || '';
+    document.getElementById('ans3').value = d.ans3 || '';
+    document.getElementById('ans-final').value = d.ansFinal || '';
+    showToast('📂 데이터를 불러왔습니다!');
+  } catch(e) {
+    showToast('불러오기 실패.');
+  }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+buildTable('temp-tbody', 'temp', '0.0', '0.1');
+buildTable('rain-tbody', 'rain', '0', '1');
+</script>
+</body>
+</html>
